@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision Guard</title>
+<style>
+  :root {
+    --bg:#f6f7f9; --panel:#ffffff; --panel-2:#fbfcfd; --ink:#16202c; --muted:#66748a;
+    --line:#e2e6ec; --accent:#0d7e7a; --accent-soft:#e2f2f1;
+    --ok:#1f8a4c; --ok-soft:#e5f5ec; --warn:#b4720a; --warn-soft:#fdf2df;
+    --bad:#c0392b; --bad-soft:#fcecea; --grey-zone:#eef0f4;
+    --shadow:0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0f1319; --panel:#161b23; --panel-2:#1b212b; --ink:#e7ecf3; --muted:#93a1b5;
+      --line:#262e3a; --accent:#2fb8ae; --accent-soft:#12312f;
+      --ok:#4ac37e; --ok-soft:#11291c; --warn:#e0a53f; --warn-soft:#2e2413;
+      --bad:#f0776a; --bad-soft:#2e1714; --grey-zone:#20262f;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0f1319; --panel:#161b23; --panel-2:#1b212b; --ink:#e7ecf3; --muted:#93a1b5;
+    --line:#262e3a; --accent:#2fb8ae; --accent-soft:#12312f;
+    --ok:#4ac37e; --ok-soft:#11291c; --warn:#e0a53f; --warn-soft:#2e2413;
+    --bad:#f0776a; --bad-soft:#2e1714; --grey-zone:#20262f;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 16px 64px; }
+
+  header { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
+  .mark {
+    width:34px; height:34px; border-radius:9px; flex:none;
+    background:var(--accent-soft); color:var(--accent);
+    display:grid; place-items:center;
+  }
+  h1 { font-size:19px; margin:0; letter-spacing:-.01em; font-weight:650; }
+  .sub { color:var(--muted); font-size:13px; margin:2px 0 0; }
+  .spacer { flex:1 1 auto; }
+
+  .pill {
+    display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:550;
+    padding:5px 11px; border-radius:999px; border:1px solid var(--line); background:var(--panel);
+    white-space:nowrap;
+  }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--muted); flex:none; }
+  .pill.on  { color:var(--ok);  border-color:color-mix(in srgb, var(--ok) 35%, var(--line)); background:var(--ok-soft); }
+  .pill.on .dot { background:var(--ok); }
+  .pill.off { color:var(--warn); border-color:color-mix(in srgb, var(--warn) 35%, var(--line)); background:var(--warn-soft); }
+  .pill.off .dot { background:var(--warn); }
+
+  .note {
+    margin:18px 0 22px; padding:11px 14px; border-radius:10px; font-size:13px;
+    background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--warn);
+    color:var(--muted);
+  }
+  .note b { color:var(--ink); font-weight:600; }
+
+  .grid { display:grid; grid-template-columns:minmax(0,420px) minmax(0,1fr); gap:20px; align-items:start; }
+  @media (max-width:880px) { .grid { grid-template-columns:1fr; } }
+
+  .card {
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    box-shadow:var(--shadow); overflow:hidden;
+  }
+  .card > h2 {
+    font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);
+    margin:0; padding:14px 16px; border-bottom:1px solid var(--line); font-weight:600;
+    background:var(--panel-2);
+  }
+  .card .body { padding:16px; }
+
+  /* ---- drop zone ---- */
+  #drop {
+    border:1.5px dashed var(--line); border-radius:12px; padding:30px 18px; text-align:center;
+    cursor:pointer; transition:border-color .15s, background .15s; background:var(--panel-2);
+  }
+  #drop:hover, #drop.hot { border-color:var(--accent); background:var(--accent-soft); }
+  #drop p { margin:8px 0 0; color:var(--muted); font-size:13px; }
+  #drop strong { color:var(--ink); font-weight:600; font-size:14.5px; }
+  #file { display:none; }
+
+  .viewer { position:relative; border-radius:11px; overflow:hidden; background:#000; aspect-ratio:1; }
+  .viewer img { width:100%; height:100%; object-fit:contain; display:block; }
+  .viewer img.hidden { display:none; }
+  .fname { font-size:12px; color:var(--muted); margin:10px 2px 0; word-break:break-all; }
+
+  .btnrow { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  button {
+    font:inherit; font-size:13px; font-weight:550; padding:7px 13px; border-radius:8px;
+    border:1px solid var(--line); background:var(--panel); color:var(--ink); cursor:pointer;
+    transition:background .12s, border-color .12s;
+  }
+  button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.primary:hover:not(:disabled) { color:#fff; filter:brightness(1.08); }
+  button.active { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+
+  /* ---- verdict ---- */
+  .verdict { border-radius:12px; padding:14px 16px; margin-bottom:16px; border:1px solid; }
+  .verdict.review  { background:var(--warn-soft); border-color:color-mix(in srgb, var(--warn) 40%, transparent); }
+  .verdict.cleared { background:var(--ok-soft);   border-color:color-mix(in srgb, var(--ok) 40%, transparent); }
+  .verdict h3 { margin:0; font-size:15.5px; letter-spacing:-.01em; }
+  .verdict.review h3  { color:var(--warn); }
+  .verdict.cleared h3 { color:var(--ok); }
+  .flags { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .flag {
+    font-size:11.5px; font-weight:600; letter-spacing:.03em; padding:3px 8px; border-radius:6px;
+    background:var(--panel); border:1px solid var(--line); color:var(--ink);
+  }
+  .reasons { margin:10px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  .reasons li { margin:3px 0; }
+
+  /* ---- probability bars ---- */
+  .dz { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:9px; }
+  .row { margin-bottom:13px; }
+  .row:last-child { margin-bottom:2px; }
+  .rowhead { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; gap:10px; }
+  .name { font-size:13.5px; font-weight:550; }
+  .name .untrained { font-weight:400; color:var(--muted); font-size:11.5px; }
+  .val { font-variant-numeric:tabular-nums; font-size:13px; font-weight:600; }
+  .track {
+    position:relative; height:9px; border-radius:5px; background:var(--grey-zone); overflow:hidden;
+  }
+  .band { position:absolute; top:0; bottom:0; left:35%; width:30%; background:color-mix(in srgb, var(--warn) 17%, transparent); }
+  .tick { position:absolute; top:-2px; bottom:-2px; left:50%; width:1.5px; background:var(--muted); opacity:.55; }
+  .fill { position:absolute; top:0; bottom:0; left:0; border-radius:5px; transition:width .35s ease; }
+  .fill.lo  { background:var(--ok); }
+  .fill.mid { background:var(--warn); }
+  .fill.hi  { background:var(--bad); }
+  /* an untrained head gets a flat hatched track and no number at all */
+  .fill.none {
+    background:repeating-linear-gradient(135deg, var(--line) 0 6px, transparent 6px 12px);
+  }
+  .untrained-row .name { color:var(--muted); }
+  .val.na { color:var(--muted); font-weight:500; }
+
+  /* ---- severity stepper ---- */
+  .stages { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:4px; }
+  .stage {
+    text-align:center; font-size:11.5px; padding:8px 4px; border-radius:8px;
+    border:1px solid var(--line); background:var(--panel-2); color:var(--muted);
+  }
+  .stage.sel { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:650; }
+  .conf { font-size:12.5px; color:var(--muted); margin-top:10px; }
+  .conf b { color:var(--ink); font-variant-numeric:tabular-nums; }
+
+  /* ---- quality ---- */
+  .qgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .q { background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:10px 12px; }
+  .q .k { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .q .v { font-size:17px; font-weight:600; font-variant-numeric:tabular-nums; margin-top:3px; }
+  .issues { display:flex; gap:6px; flex-wrap:wrap; margin-top:11px; }
+  .issue { font-size:11.5px; padding:3px 8px; border-radius:6px; background:var(--bad-soft); color:var(--bad); font-weight:550; }
+
+  .empty { color:var(--muted); font-size:13.5px; text-align:center; padding:34px 12px; }
+  .err {
+    background:var(--bad-soft); color:var(--bad); border:1px solid color-mix(in srgb, var(--bad) 35%, transparent);
+    border-radius:10px; padding:11px 14px; font-size:13.5px; margin-bottom:16px;
+  }
+  .spin {
+    width:15px; height:15px; border:2px solid var(--line); border-top-color:var(--accent);
+    border-radius:50%; animation:spin .7s linear infinite; display:inline-block; vertical-align:-3px;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  footer { margin-top:26px; font-size:12px; color:var(--muted); line-height:1.65; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="mark" aria-hidden="true">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+        <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/>
+        <circle cx="12" cy="12" r="3.2"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Vision Guard</h1>
+      <p class="sub">Retinal fundus screening &mdash; research preview</p>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill" id="status"><span class="dot"></span><span id="statustext">checking&hellip;</span></span>
+    <span class="pill" id="userpill" style="display:none"><span id="username"></span></span>
+    <button id="logout" style="display:none">Sign out</button>
+  </header>
+
+  <div class="note">
+    <b>Not a medical device.</b> Research and educational use only &mdash; this must not be used to
+    diagnose or treat anyone. Any prediction shown here is provisional and, by design, defers to a
+    human ophthalmologist whenever the image is poor or the model is unsure.
+  </div>
+
+  <div class="grid">
+
+    <!-- LEFT -->
+    <div>
+      <div class="card">
+        <h2>Fundus image</h2>
+        <div class="body">
+          <div id="drop" tabindex="0" role="button" aria-label="Choose a fundus image">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <path d="M7 9l5-5 5 5"/><path d="M12 4v12"/>
+            </svg>
+            <p><strong>Drop an image</strong><br>or click to browse &mdash; JPG or PNG</p>
+          </div>
+          <input type="file" id="file" accept="image/*">
+
+          <div id="preview" style="display:none">
+            <div class="viewer">
+              <img id="imgOrig" alt="Uploaded fundus image">
+              <img id="imgCam" class="hidden" alt="Grad-CAM heatmap">
+            </div>
+            <div class="fname" id="fname"></div>
+            <div class="btnrow">
+              <button id="analyze" class="primary">Analyze</button>
+              <button id="toggleCam" disabled>Show heatmap</button>
+              <button id="reset">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="camCard" style="display:none; margin-top:20px">
+        <h2>Grad-CAM &mdash; where the model looked</h2>
+        <div class="body">
+          <p id="camNote" style="margin:0 0 11px; font-size:13px; color:var(--muted)">
+            Pick a condition to see which retinal regions drove that score.
+          </p>
+          <div class="btnrow" id="camBtns"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div>
+      <div id="err" class="err" style="display:none"></div>
+
+      <div id="results" style="display:none">
+        <div class="verdict" id="verdict">
+          <h3 id="verdictText"></h3>
+          <div class="flags" id="verdictFlags"></div>
+          <ul class="reasons" id="verdictReasons"></ul>
+        </div>
+
+        <div class="card">
+          <h2>Disease probabilities</h2>
+          <div class="body">
+            <div class="dz"><span>0.0</span><span>uncertain band 0.35&ndash;0.65</span><span>1.0</span></div>
+            <div id="bars"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <h2>Diabetic retinopathy severity</h2>
+          <div class="body">
+            <div class="stages" id="stages"></div>
+            <div class="conf" id="sevConf"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <h2>Image quality</h2>
+          <div class="body">
+            <div class="qgrid" id="qgrid"></div>
+            <div class="issues" id="qissues"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="placeholder">
+        <h2>Results</h2>
+        <div class="body"><div class="empty">Upload a fundus image and press <b>Analyze</b>.</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    Thresholds come from <code>config.py</code> and are starting guesses, not calibrated values:
+    a score at or above <b>0.50</b> counts as a positive screen, and anything between
+    <b>0.35</b> and <b>0.65</b> is treated as low confidence. Any flag at all routes the case to a
+    human. Disease heads that had no labels in the training data still emit a number &mdash; treat
+    those as meaningless until that condition is actually trained.
+  </footer>
+</div>
+
+<script>
+const DISEASES = ["DR","Glaucoma","Cataract","AMD","Hypertensive_Retinopathy"];
+const LABEL = {
+  DR:"Diabetic retinopathy", Glaucoma:"Glaucoma", Cataract:"Cataract",
+  AMD:"Age-related macular degeneration", Hypertensive_Retinopathy:"Hypertensive retinopathy"
+};
+const STAGES = ["No_DR","Mild","Moderate","Severe","Proliferative"];
+const STAGE_LABEL = { No_DR:"No DR", Mild:"Mild", Moderate:"Moderate", Severe:"Severe", Proliferative:"Prolif." };
+
+const $ = id => document.getElementById(id);
+let currentFile = null, camCache = {}, camShown = false;
+let reportedDiseases = null;  // set from each /predict response; null = unknown
+
+/* ---------- model status ---------- */
+async function checkHealth() {
+  const pill = $("status"), txt = $("statustext");
+  try {
+    const r = await fetch("/health");
+    const j = await r.json();
+    if (j.model_loaded) { pill.className = "pill on";  txt.textContent = "model loaded"; }
+    else                { pill.className = "pill off"; txt.textContent = "no checkpoint yet"; }
+
+    if (j.user) {
+      $("username").textContent = j.user;
+      $("userpill").style.display = "";
+      $("logout").style.display = "";
+    } else {
+      // the cookie expired while the tab sat open
+      location.href = "/login?next=" + encodeURIComponent(location.pathname);
+    }
+  } catch {
+    pill.className = "pill off"; txt.textContent = "API unreachable";
+  }
+}
+checkHealth();
+setInterval(checkHealth, 20000);
+
+$("logout").onclick = async () => {
+  try { await fetch("/auth/logout", { method: "POST" }); } catch {}
+  location.href = "/login";
+};
+
+/* Any 401 mid-session means the cookie lapsed -- bounce to the login page and
+   come back to where we were. */
+function bounceIfUnauthorized(r) {
+  if (r.status === 401) {
+    location.href = "/login?next=" + encodeURIComponent(location.pathname);
+    return true;
+  }
+  return false;
+}
+
+/* ---------- file intake ---------- */
+const drop = $("drop"), fileInput = $("file");
+drop.onclick = () => fileInput.click();
+drop.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } };
+["dragenter","dragover"].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("hot"); }));
+["dragleave","drop"].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("hot"); }));
+drop.addEventListener("drop", e => { if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+fileInput.onchange = () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); };
+
+function loadFile(f) {
+  if (!f.type.startsWith("image/")) return showErr("That file is not an image.");
+  currentFile = f; camCache = {}; camShown = false;
+  $("imgOrig").src = URL.createObjectURL(f);
+  $("imgOrig").classList.remove("hidden");
+  $("imgCam").classList.add("hidden");
+  $("fname").textContent = f.name;
+  $("preview").style.display = "";
+  drop.style.display = "none";
+  $("toggleCam").disabled = true;
+  $("toggleCam").textContent = "Show heatmap";
+  $("camCard").style.display = "none";
+  hideErr();
+}
+
+$("reset").onclick = () => {
+  currentFile = null; camCache = {}; camShown = false;
+  $("preview").style.display = "none";
+  drop.style.display = "";
+  fileInput.value = "";
+  $("results").style.display = "none";
+  $("placeholder").style.display = "";
+  $("camCard").style.display = "none";
+  hideErr();
+};
+
+/* ---------- predict ---------- */
+$("analyze").onclick = async () => {
+  if (!currentFile) return;
+  const btn = $("analyze");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Analyzing';
+  hideErr();
+  try {
+    const fd = new FormData();
+    fd.append("file", currentFile);
+    const r = await fetch("/predict", { method:"POST", body:fd });
+    if (bounceIfUnauthorized(r)) return;
+    if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || `HTTP ${r.status}`);
+    render(await r.json());
+    buildCamButtons();
+  } catch (e) {
+    showErr(String(e.message || e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Analyze";
+  }
+};
+
+function render(d) {
+  $("placeholder").style.display = "none";
+  $("results").style.display = "";
+
+  /* verdict */
+  const cleared = d.safety.decision === "AUTO_CLEARED_NORMAL";
+  $("verdict").className = "verdict " + (cleared ? "cleared" : "review");
+  $("verdictText").textContent = cleared
+    ? "Auto-cleared — nothing flagged"
+    : "Refer to an ophthalmologist";
+  $("verdictFlags").innerHTML = (d.safety.flags || [])
+    .map(f => `<span class="flag">${esc(f)}</span>`).join("");
+  $("verdictReasons").innerHTML = (d.safety.reasons || [])
+    .map(x => `<li>${esc(x)}</li>`).join("");
+
+  /* probabilities */
+  // A head with no training labels outputs noise near 0.5. Showing that as a
+  // probability invites reading meaning into it, so say plainly that it is not
+  // a prediction rather than dressing noise up as one.
+  // Two different reasons a condition shows no number, and they must not be
+  // conflated: a head with no training labels emits noise, whereas a held head
+  // is trained but has no validated threshold behind it yet.
+  const reported = d.reported_diseases || d.trained_diseases;  // null => all
+  const held = d.held_diseases || [];
+  reportedDiseases = reported;
+  $("bars").innerHTML = DISEASES.map(k => {
+    const p = d.disease_probabilities[k];
+    if (p == null) return "";
+    const isReported = !reported || reported.includes(k);
+    if (!isReported) {
+      const why = held.includes(k)
+        ? "on hold &mdash; trained, pending validation"
+        : "not trained &mdash; no labels in the training data";
+      return `<div class="row untrained-row">
+        <div class="rowhead">
+          <span class="name">${esc(LABEL[k] || k)}
+            <span class="untrained">${why}</span>
+          </span>
+          <span class="val na">n/a</span>
+        </div>
+        <div class="track"><div class="fill none" style="width:100%"></div></div>
+      </div>`;
+    }
+    const cls = p >= 0.65 ? "hi" : (p >= 0.35 ? "mid" : "lo");
+    return `<div class="row">
+      <div class="rowhead">
+        <span class="name">${esc(LABEL[k] || k)}</span>
+        <span class="val">${p.toFixed(3)}</span>
+      </div>
+      <div class="track">
+        <div class="band"></div><div class="tick"></div>
+        <div class="fill ${cls}" style="width:${(p*100).toFixed(1)}%"></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  /* severity */
+  $("stages").innerHTML = STAGES.map(s =>
+    `<div class="stage ${s === d.dr_severity.stage ? "sel" : ""}">${esc(STAGE_LABEL[s])}</div>`
+  ).join("");
+  $("sevConf").innerHTML =
+    `Predicted stage <b>${esc(STAGE_LABEL[d.dr_severity.stage] || d.dr_severity.stage)}</b>
+     at <b>${(d.dr_severity.confidence*100).toFixed(1)}%</b> confidence.`;
+
+  /* quality */
+  const q = d.quality;
+  $("qgrid").innerHTML = `
+    <div class="q"><div class="k">Brightness</div><div class="v">${q.brightness}</div></div>
+    <div class="q"><div class="k">Sharpness</div><div class="v">${q.sharpness}</div></div>
+    <div class="q"><div class="k">Fundus area</div><div class="v">${(q.fundus_fraction*100).toFixed(0)}%</div></div>`;
+  $("qissues").innerHTML = q.usable
+    ? `<span class="issue" style="background:var(--ok-soft); color:var(--ok)">usable image</span>`
+    : (q.issues || []).map(i => `<span class="issue">${esc(i.replace(/_/g," "))}</span>`).join("");
+}
+
+/* ---------- Grad-CAM ---------- */
+function buildCamButtons() {
+  // Only reported heads get a heatmap button. A heatmap always looks decisive,
+  // so offering one for a condition we are not yet reporting invites the reader
+  // to find meaning we are not claiming.
+  const offer = DISEASES.filter(k => !reportedDiseases || reportedDiseases.includes(k));
+  const hidden = DISEASES.length - offer.length;
+
+  $("camCard").style.display = offer.length ? "" : "none";
+  $("camBtns").innerHTML = offer
+    .map(k => `<button data-d="${k}">${esc(LABEL[k] || k)}</button>`).join("");
+  [...$("camBtns").children].forEach(b => b.onclick = () => loadCam(b.dataset.d, b));
+
+  $("camNote").textContent = hidden
+    ? `${hidden} condition${hidden > 1 ? "s are" : " is"} omitted while outside the validated scope.`
+    : "Pick a condition to see which retinal regions drove that score.";
+}
+
+async function loadCam(disease, btn) {
+  if (!currentFile) return;
+  const prev = btn.textContent;
+  [...$("camBtns").children].forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  hideErr();
+  try {
+    if (!camCache[disease]) {
+      btn.innerHTML = '<span class="spin"></span>';
+      const fd = new FormData();
+      fd.append("file", currentFile);
+      const r = await fetch(`/explain?disease=${encodeURIComponent(disease)}`,
+                            { method:"POST", body:fd });
+      if (bounceIfUnauthorized(r)) return;
+      if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || `HTTP ${r.status}`);
+      camCache[disease] = URL.createObjectURL(await r.blob());
+    }
+    $("imgCam").src = camCache[disease];
+    showCam(true);
+    $("toggleCam").disabled = false;
+  } catch (e) {
+    showErr(String(e.message || e));
+    btn.classList.remove("active");
+  } finally {
+    btn.textContent = prev;
+  }
+}
+
+function showCam(on) {
+  camShown = on;
+  $("imgCam").classList.toggle("hidden", !on);
+  $("imgOrig").classList.toggle("hidden", on);
+  $("toggleCam").textContent = on ? "Show original" : "Show heatmap";
+}
+$("toggleCam").onclick = () => showCam(!camShown);
+
+/* ---------- helpers ---------- */
+function showErr(m) { const e = $("err"); e.textContent = m; e.style.display = ""; }
+function hideErr()  { $("err").style.display = "none"; }
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+</script>
+</body>
+</html>

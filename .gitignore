@@ -1,0 +1,33 @@
+# ---- secrets: never commit these ----
+# NOTE: git does not support trailing comments on pattern lines, so every
+# comment here lives on its own line. A pattern with a "# ..." suffix is
+# treated as a literal filename and silently matches nothing.
+
+# Google/GitHub client IDs and secrets
+oauth_config.json
+# password hashes
+auth_users.json
+# signs session cookies; leaking it lets anyone forge a login
+.session_secret
+
+# ---- data ----
+datasets/
+
+# ---- training artifacts ----
+# the shared checkpoint is force-added; everything else stays local
+checkpoints/last.pt
+checkpoints/*.tmp
+*.log
+
+# ---- python ----
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ---- editor / tooling ----
+.claude/
+.vscode/
+.idea/
+.DS_Store
+checkpoints/vision_guard_DRonly_*.pt

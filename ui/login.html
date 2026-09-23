@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision Guard &mdash; Sign in</title>
+<style>
+  :root {
+    --bg:#f6f7f9; --panel:#ffffff; --panel-2:#fbfcfd; --ink:#16202c; --muted:#66748a;
+    --line:#e2e6ec; --accent:#0d7e7a; --accent-soft:#e2f2f1;
+    --warn:#b4720a; --warn-soft:#fdf2df;
+    --bad:#c0392b; --bad-soft:#fcecea;
+    --shadow:0 1px 2px rgba(16,24,40,.05), 0 10px 34px rgba(16,24,40,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0f1319; --panel:#161b23; --panel-2:#1b212b; --ink:#e7ecf3; --muted:#93a1b5;
+      --line:#262e3a; --accent:#2fb8ae; --accent-soft:#12312f;
+      --warn:#e0a53f; --warn-soft:#2e2413;
+      --bad:#f0776a; --bad-soft:#2e1714;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0f1319; --panel:#161b23; --panel-2:#1b212b; --ink:#e7ecf3; --muted:#93a1b5;
+    --line:#262e3a; --accent:#2fb8ae; --accent-soft:#12312f;
+    --warn:#e0a53f; --warn-soft:#2e2413;
+    --bad:#f0776a; --bad-soft:#2e1714;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+    font:15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:grid; place-items:center; padding:24px 16px;
+  }
+  .box { width:100%; max-width:390px; }
+
+  .brand { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+  .mark {
+    width:38px; height:38px; border-radius:10px; flex:none;
+    background:var(--accent-soft); color:var(--accent); display:grid; place-items:center;
+  }
+  h1 { font-size:19px; margin:0; font-weight:650; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:13px; margin:2px 0 0; }
+
+  .card {
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    box-shadow:var(--shadow); padding:22px;
+  }
+
+  label { display:block; font-size:12.5px; font-weight:600; margin:0 0 6px; }
+  input {
+    width:100%; font:inherit; font-size:14.5px; padding:10px 12px; border-radius:9px;
+    border:1px solid var(--line); background:var(--panel-2); color:var(--ink);
+    transition:border-color .13s, box-shadow .13s;
+  }
+  input:focus {
+    outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  .field { margin-bottom:14px; }
+
+  button {
+    width:100%; font:inherit; font-size:14.5px; font-weight:600; padding:11px;
+    border-radius:9px; border:1px solid var(--accent); background:var(--accent);
+    color:#fff; cursor:pointer; transition:filter .12s; margin-top:4px;
+  }
+  button:hover:not(:disabled) { filter:brightness(1.08); }
+  button:disabled { opacity:.55; cursor:not-allowed; }
+
+  .msg { border-radius:9px; padding:10px 12px; font-size:13px; margin-bottom:14px; }
+  .msg.bad  { background:var(--bad-soft);  color:var(--bad);
+              border:1px solid color-mix(in srgb, var(--bad) 32%, transparent); }
+  .msg.warn { background:var(--warn-soft); color:var(--warn);
+              border:1px solid color-mix(in srgb, var(--warn) 32%, transparent); }
+  .msg code {
+    background:color-mix(in srgb, currentColor 12%, transparent);
+    padding:1px 5px; border-radius:4px; font-size:12px;
+  }
+
+  .spin {
+    width:15px; height:15px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff;
+    border-radius:50%; animation:spin .7s linear infinite; display:inline-block; vertical-align:-3px;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* social sign-in */
+  .or {
+    display:flex; align-items:center; gap:10px; margin:18px 0 14px;
+    color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.07em;
+  }
+  .or::before, .or::after { content:""; flex:1; height:1px; background:var(--line); }
+
+  .social { display:flex; flex-direction:column; gap:9px; }
+  .social a {
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    text-decoration:none; font-size:14px; font-weight:550; padding:10px;
+    border-radius:9px; border:1px solid var(--line); background:var(--panel-2);
+    color:var(--ink); transition:border-color .12s, background .12s;
+  }
+  .social a:hover { border-color:var(--accent); background:var(--accent-soft); }
+  .social svg { flex:none; }
+
+  footer { margin-top:16px; font-size:11.5px; color:var(--muted); line-height:1.6; text-align:center; }
+</style>
+</head>
+<body>
+<div class="box">
+
+  <div class="brand">
+    <div class="mark" aria-hidden="true">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round">
+        <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/>
+        <circle cx="12" cy="12" r="3.2"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Vision Guard</h1>
+      <p class="sub">Sign in to continue</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="setup" class="msg warn" style="display:none">
+      No accounts exist yet. Create one from the project folder:<br>
+      <code>python -m api.auth add &lt;username&gt;</code>
+    </div>
+    <div id="err" class="msg bad" style="display:none"></div>
+
+    <form id="form" autocomplete="on">
+      <div class="field">
+        <label for="u">Username</label>
+        <input id="u" name="username" autocomplete="username" required autofocus>
+      </div>
+      <div class="field">
+        <label for="p">Password</label>
+        <input id="p" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button id="go" type="submit">Sign in</button>
+    </form>
+
+    <div id="socialWrap" style="display:none">
+      <div class="or">or</div>
+      <div class="social" id="social"></div>
+    </div>
+  </div>
+
+  <footer>
+    Research and educational use only &mdash; not a medical device.
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* An OAuth round trip that failed comes back as ?error=... */
+const qsError = new URLSearchParams(location.search).get("error");
+if (qsError) {
+  $("err").textContent = qsError;
+  $("err").style.display = "";
+}
+
+/* Tell the user how to create the first account, rather than failing silently. */
+fetch("/health")
+  .then(r => r.json())
+  .then(j => { if (j.has_users === false) $("setup").style.display = ""; })
+  .catch(() => {});
+
+/* Provider buttons appear only for providers that are actually configured. */
+const GLYPH = {
+  google: '<svg width="17" height="17" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z"/></svg>',
+  github: '<svg width="17" height="17" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>'
+};
+fetch("/auth/providers")
+  .then(r => r.json())
+  .then(j => {
+    if (!j.providers || !j.providers.length) return;
+    $("social").innerHTML = j.providers.map(p =>
+      `<a href="/auth/${encodeURIComponent(p.key)}/start">
+         ${GLYPH[p.key] || ""}<span>Continue with ${escapeHtml(p.label)}</span>
+       </a>`).join("");
+    $("socialWrap").style.display = "";
+  })
+  .catch(() => {});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+$("form").onsubmit = async e => {
+  e.preventDefault();
+  const btn = $("go");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>';
+  $("err").style.display = "none";
+  try {
+    const body = new URLSearchParams({ username: $("u").value, password: $("p").value });
+    const r = await fetch("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
+    if (r.ok) {
+      const next = new URLSearchParams(location.search).get("next");
+      // only allow same-site paths, so ?next= cannot bounce you off-site
+      location.href = (next && next.startsWith("/") && !next.startsWith("//")) ? next : "/";
+      return;
+    }
+    const j = await r.json().catch(() => ({}));
+    fail(j.detail || `Sign-in failed (HTTP ${r.status})`);
+  } catch {
+    fail("Cannot reach the server. Is uvicorn running?");
+  }
+  function fail(m) {
+    $("err").textContent = m;
+    $("err").style.display = "";
+    $("p").value = "";
+    $("p").focus();
+    btn.disabled = false;
+    btn.textContent = "Sign in";
+  }
+};
+</script>
+</body>
+</html>
