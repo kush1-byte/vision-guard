@@ -91,6 +91,24 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
     return {"ok": True, "user": username}
 
 
+@app.post("/auth/signup")
+def signup(response: Response, username: str = Form(...), password: str = Form(...)):
+    """Create an account. Registration is open; see api/auth.py."""
+    try:
+        auth.create_account(username, password)
+    except PermissionError as e:
+        # 403, not 401: the request was understood and refused on policy.
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Signing up signs you in; no second round trip through the login form.
+    response.set_cookie(
+        auth.COOKIE_NAME, auth.make_token(username.strip()),
+        max_age=auth.SESSION_TTL, httponly=True, samesite="lax", secure=False)
+    return {"ok": True, "user": username.strip()}
+
+
 @app.post("/auth/logout")
 def logout(response: Response):
     response.delete_cookie(auth.COOKIE_NAME)
@@ -181,6 +199,7 @@ def health(request: Request):
         "status": "ok",
         "model_loaded": predictor is not None,
         "has_users": auth.any_users(),
+        "signup_enabled": auth.signup_enabled(),
         "user": auth.read_token(request.cookies.get(auth.COOKIE_NAME)),
     }
 

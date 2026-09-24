@@ -5,7 +5,8 @@ Standard library only — no extra dependencies. Two pieces:
 
   1. Password storage: PBKDF2-HMAC-SHA256 with a per-user random salt. Plaintext
      passwords are never written anywhere. Users live in `auth_users.json`,
-     created by the CLI at the bottom of this file.
+     created by the CLI at the bottom of this file or by signing up on the
+     login page.
 
   2. Session cookie: a signed token, `base64(username|expiry).base64(hmac)`.
      The server keeps no session table — it just verifies its own signature, so
@@ -100,6 +101,44 @@ def check_login(username: str, password: str) -> bool:
 
 def any_users() -> bool:
     return bool(load_users())
+
+
+# --------------------------------------------------------------------------
+# self-service sign-up
+# --------------------------------------------------------------------------
+# Registration is open: anyone who can reach the page can create an account.
+# Set  "signup": {"enabled": false}  in oauth_config.json to turn it off.
+#
+# Note this is a different policy from the OAuth allowlist, which still gates
+# provider logins. Password accounts are open; Google identities are not.
+INSTANCE_CONFIG = CFG.project_root / "oauth_config.json"
+
+
+def _instance_config() -> dict:
+    if not INSTANCE_CONFIG.exists():
+        return {}
+    try:
+        return json.loads(INSTANCE_CONFIG.read_text("utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+
+def signup_enabled() -> bool:
+    return (_instance_config().get("signup") or {}).get("enabled", True) is not False
+
+
+def create_account(username: str, password: str) -> None:
+    """Register a new user. Raises PermissionError or ValueError on refusal."""
+    if not signup_enabled():
+        raise PermissionError("Sign-up is disabled on this instance.")
+
+    username = username.strip()
+    # add_user() overwrites by design (it is the admin CLI). Here an existing
+    # name must be refused outright -- otherwise signing up as someone who
+    # already exists would silently reset their password.
+    if username in load_users():
+        raise ValueError("That username is already taken.")
+    add_user(username, password)
 
 
 # --------------------------------------------------------------------------

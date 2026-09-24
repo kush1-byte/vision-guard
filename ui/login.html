@@ -104,6 +104,11 @@
   .social a:hover { border-color:var(--accent); background:var(--accent-soft); }
   .social svg { flex:none; }
 
+  .switch { margin:14px 0 0; text-align:center; font-size:13px; color:var(--muted); }
+  .switch a { color:var(--accent); font-weight:600; text-decoration:none; }
+  .switch a:hover { text-decoration:underline; }
+  .hint { font-size:11.5px; color:var(--muted); margin:6px 0 0; line-height:1.45; }
+
   footer { margin-top:16px; font-size:11.5px; color:var(--muted); line-height:1.6; text-align:center; }
 </style>
 </head>
@@ -143,6 +148,28 @@
       <button id="go" type="submit">Sign in</button>
     </form>
 
+    <form id="signupForm" autocomplete="on" style="display:none">
+      <div class="field">
+        <label for="su">Username</label>
+        <input id="su" name="username" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="sp">Password</label>
+        <input id="sp" name="password" type="password" autocomplete="new-password" required>
+        <p class="hint">At least 8 characters.</p>
+      </div>
+      <div class="field">
+        <label for="sp2">Confirm password</label>
+        <input id="sp2" type="password" autocomplete="new-password" required>
+      </div>
+      <button id="sgo" type="submit">Create account</button>
+    </form>
+
+    <p class="switch" id="switchWrap" style="display:none">
+      <span id="toSignupWrap">New here? <a href="#" id="toSignup">Create an account</a></span>
+      <span id="toLoginWrap" style="display:none">Already have an account? <a href="#" id="toLogin">Sign in</a></span>
+    </p>
+
     <div id="socialWrap" style="display:none">
       <div class="or">or</div>
       <div class="social" id="social"></div>
@@ -164,11 +191,37 @@ if (qsError) {
   $("err").style.display = "";
 }
 
-/* Tell the user how to create the first account, rather than failing silently. */
+/* Tell the user how to create the first account, rather than failing silently.
+   The sign-up toggle only appears when the server has an invite code configured;
+   with none, registration is off and offering it would be a dead end. */
 fetch("/health")
   .then(r => r.json())
-  .then(j => { if (j.has_users === false) $("setup").style.display = ""; })
+  .then(j => {
+    if (j.signup_enabled) $("switchWrap").style.display = "";
+    if (j.has_users === false) {
+      if (j.signup_enabled) {
+        $("setup").innerHTML = "No accounts exist yet &mdash; create the first one below.";
+      }
+      $("setup").style.display = "";
+    }
+  })
   .catch(() => {});
+
+/* ---- switching between the two forms ---- */
+function setMode(signup) {
+  $("form").style.display        = signup ? "none" : "";
+  $("signupForm").style.display  = signup ? "" : "none";
+  $("socialWrap").style.display  = (signup || !hasProviders) ? "none" : "";
+  $("toSignupWrap").style.display = signup ? "none" : "";
+  $("toLoginWrap").style.display  = signup ? "" : "none";
+  document.querySelector(".sub").textContent =
+    signup ? "Create an account" : "Sign in to continue";
+  $("err").style.display = "none";
+  (signup ? $("su") : $("u")).focus();
+}
+let hasProviders = false;
+$("toSignup").onclick = e => { e.preventDefault(); setMode(true); };
+$("toLogin").onclick  = e => { e.preventDefault(); setMode(false); };
 
 /* Provider buttons appear only for providers that are actually configured. */
 const GLYPH = {
@@ -183,7 +236,8 @@ fetch("/auth/providers")
       `<a href="/auth/${encodeURIComponent(p.key)}/start">
          ${GLYPH[p.key] || ""}<span>Continue with ${escapeHtml(p.label)}</span>
        </a>`).join("");
-    $("socialWrap").style.display = "";
+    hasProviders = true;
+    if ($("signupForm").style.display === "none") $("socialWrap").style.display = "";
   })
   .catch(() => {});
 
@@ -191,6 +245,44 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c =>
     ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 }
+
+$("signupForm").onsubmit = async e => {
+  e.preventDefault();
+  const btn = $("sgo");
+  $("err").style.display = "none";
+
+  // Check the two passwords match here rather than at the server: it is the
+  // one error we can catch without a round trip, and the field is cleared
+  // either way, so a round trip would just cost the user their typing.
+  if ($("sp").value !== $("sp2").value) return sfail("The two passwords do not match.");
+  if ($("sp").value.length < 8) return sfail("Password must be at least 8 characters.");
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>';
+  try {
+    const body = new URLSearchParams({
+      username: $("su").value, password: $("sp").value });
+    const r = await fetch("/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
+    if (r.ok) { location.href = "/"; return; }
+    const j = await r.json().catch(() => ({}));
+    sfail(j.detail || `Could not create the account (HTTP ${r.status})`);
+  } catch {
+    sfail("Cannot reach the server. Is uvicorn running?");
+  }
+
+  function sfail(m) {
+    $("err").textContent = m;
+    $("err").style.display = "";
+    $("sp").value = ""; $("sp2").value = "";
+    $("sp").focus();
+    btn.disabled = false;
+    btn.textContent = "Create account";
+  }
+};
 
 $("form").onsubmit = async e => {
   e.preventDefault();
